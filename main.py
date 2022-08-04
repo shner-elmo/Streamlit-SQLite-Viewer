@@ -14,12 +14,15 @@ def sqlite_connect(db_bytes):
     return conn
 
 
-if 'data' not in st.session_state:
-    file_path = st.file_uploader('Upload dataset:', type='.db', accept_multiple_files=False)
-    while file_path is None:
-        st.stop()
-    else:
-        st.session_state.conn = sqlite_connect(file_path)
+upload_file = st.file_uploader('Upload dataset:', type=['.db', '.sqlite', '.sqlite3', '.db3'],
+                               accept_multiple_files=False)
+
+while upload_file is None:
+    with open("parch-and-posey.db", "rb") as file:
+        st.download_button(label="Download sample dataset", data=file, file_name=file.name)
+    st.stop()
+else:
+    st.session_state.conn = sqlite_connect(upload_file)
 
 
 with st.container():
@@ -37,22 +40,29 @@ with st.container():
             cols[0].text(f'Exec time: {ms_elapsed}ms')
             cols[1].text(f'Last Query: {time.strftime("%X")}')
             cols[2].text(f'Shape: {df.shape}')
-            st.dataframe(df)
+
+            df_cols = df.columns.value_counts()
+            duplicated_cols = df_cols[df_cols > 1].index.to_list()
+
+            if len(duplicated_cols) > 0:
+                st.warning(f'Cannot display a table with multiple same name columns ({duplicated_cols})')
+            else:
+                st.dataframe(df)
 
 
 with st.sidebar:
     show_types = st.checkbox('Show types', value=True, help='Show data types for each column ?')
-    schema_md = ''
-    cursor = st.session_state.conn.cursor()
+    schema = ''
+    cursor = st.session_state.conn  # .cursor()
 
-    for x in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall():
+    for x in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
         table = x[0]
-        schema_md += f'\n  * {table}:'
+        schema += f'\n\n * {table}:'
 
-        for row in cursor.execute(f"PRAGMA table_info('{table}')").fetchall():
+        for row in cursor.execute(f"PRAGMA table_info('{table}')"):
             col_name = row[1]
-            col_type = row[2] if show_types is True else ''
-            schema_md += f'\n \t* {col_name} &ensp; {col_type}'  # &ensp; == md tab
+            col_type = row[2].upper() if show_types is True else ''
+            schema += f'\n     - {col_name:<15} {col_type}'
 
     st.text('DataBase Schema:')
-    st.markdown(schema_md)
+    st.text(schema)
