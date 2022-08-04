@@ -11,5 +11,5 @@ You can now use the web app directly [online](https://shner-elmo-streamlit-sqlit
 # TODO list:
 - [x] Add sample dataset
 - [x] Add screenshot
-- [ ] Add styling to the background and table
+- [x] Add styling to the background and table
 - [ ] Optimize file upload block
