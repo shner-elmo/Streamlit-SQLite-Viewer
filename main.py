@@ -14,7 +14,7 @@ def sqlite_connect(db_bytes):
     return conn
 
 
-upload_file = st.file_uploader('Upload dataset:', type=['.db', '.sqlite', '.sqlite3', '.db3'],
+upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
                                accept_multiple_files=False)
 
 while upload_file is None:
@@ -22,7 +22,13 @@ while upload_file is None:
         st.download_button(label="Download sample dataset", data=file, file_name=file.name)
     st.stop()
 else:
-    st.session_state.conn = sqlite_connect(upload_file)
+    extension = upload_file.name.split('.')[-1]
+    if extension == 'sql':
+        conn = sqlite3.connect(':memory:')
+        conn.executescript(upload_file.getvalue().decode('utf-8'))
+        st.session_state.conn = conn
+    else:
+        st.session_state.conn = sqlite_connect(upload_file)
 
 
 with st.container():
