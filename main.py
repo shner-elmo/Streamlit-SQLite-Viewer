@@ -8,15 +8,21 @@ from uuid import uuid4
 
 
 def sqlite_connect(db_bytes):
+    """
+    Load Sqlite file
+
+    :param db_bytes: file obj
+    :return: sqlite connection
+    """
     fp = Path(str(uuid4()))
     fp.write_bytes(db_bytes.getvalue())
     conn = sqlite3.connect(str(fp))
     return conn
 
 
+# upload file and download sample
 upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
                                accept_multiple_files=False)
-
 while upload_file is None:
     with open("parch-and-posey.db", "rb") as file:
         st.download_button(label="Download sample dataset", data=file, file_name=file.name)
@@ -31,6 +37,7 @@ else:
         st.session_state.conn = sqlite_connect(upload_file)
 
 
+# table and metrics
 with st.container():
     query = st.text_area('SQL Query', value='SELECT * FROM table', key='query')
     timer_start = time.perf_counter()
@@ -56,6 +63,7 @@ with st.container():
                 st.dataframe(df)
 
 
+# sidebar/ schema
 with st.sidebar:
     show_types = st.checkbox('Show types', value=True, help='Show data types for each column ?')
     schema = ''
@@ -72,3 +80,8 @@ with st.sidebar:
 
     st.text('DataBase Schema:')
     st.text(schema)
+
+    st.markdown('***')
+    cols = st.columns(4)
+    cols[0].markdown('Shneor E.')
+    cols[3].markdown('[Source](https://github.com/shner-elmo/Streamlit-SQLite-Viewer)')
