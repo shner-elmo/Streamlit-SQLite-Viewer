@@ -20,6 +20,27 @@ def sqlite_connect(db_bytes):
     return conn
 
 
+def rename_duplicate_cols(data_frame):
+    """
+    for each duplicated column it will add a suffix with a number (col, col_2, col_3... )
+
+    :param data_frame: DataFrame
+    :return: None
+    """
+    new_cols = []
+    prev_cols = []  # previously iterated columns in for loop
+
+    for col in data_frame.columns:
+        prev_cols.append(col)
+        count = prev_cols.count(col)
+
+        if count > 1:
+            new_cols.append(f'{col}_{count}')
+        else:
+            new_cols.append(col)
+    data_frame.columns = new_cols
+
+
 # upload file and download sample
 upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
                                accept_multiple_files=False)
@@ -54,13 +75,9 @@ with st.container():
             cols[1].text(f'Last Query: {time.strftime("%X")}')
             cols[2].text(f'Shape: {df.shape}')
 
-            df_cols = df.columns.value_counts()
-            duplicated_cols = df_cols[df_cols > 1].index.to_list()
-
-            if len(duplicated_cols) > 0:
-                st.warning(f'Cannot display a table with multiple same name columns ({duplicated_cols})')
-            else:
-                st.dataframe(df)
+            if df.columns.has_duplicates:
+                rename_duplicate_cols(df)
+            st.dataframe(df)
 
 
 # sidebar/ schema
@@ -84,4 +101,4 @@ with st.sidebar:
     st.markdown('***')
     cols = st.columns(4)
     cols[0].markdown('Shneor E.')
-    cols[3].markdown('[Source](https://github.com/shner-elmo/Streamlit-SQLite-Viewer)')
+    cols[3].markdown('[Source](https://bit.ly/3zZwpim)')
