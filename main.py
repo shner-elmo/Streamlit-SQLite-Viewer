@@ -16,8 +16,8 @@ def sqlite_connect(db_bytes):
     """
     fp = Path(str(uuid4()))
     fp.write_bytes(db_bytes.getvalue())
-    conn = sqlite3.connect(str(fp))
-    return conn
+    con = sqlite3.connect(str(fp))
+    return con
 
 
 def rename_duplicate_cols(data_frame):
@@ -41,8 +41,19 @@ def rename_duplicate_cols(data_frame):
     data_frame.columns = new_cols
 
 
-if 'query_history' not in st.session_state:
-    st.session_state.query_history = []  # type_: list[dict]
+@st.experimental_singleton
+def hist_queries() -> list[dict]:
+    """
+    Function that returns a list, the decorator will save the output
+    of the function, and therefore it will just mutate the output (list)
+    which is saved in cache.
+    (all this because we cannot store a dictionary directly in cache)
+    """
+    d: list[dict] = []
+    return d
+
+
+data = hist_queries()
 
 tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
 with tab1:
@@ -91,12 +102,12 @@ with tab1:
                 st.dataframe(df)
 
                 # save query and stats for query-history tab
-                st.session_state.query_history.append(
+                data.append(
                     {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
 
 with tab2:
-    st.write(f'Total Queries: {len(st.session_state.query_history)}')
-    for dct in reversed(st.session_state.query_history):  #
+    st.write(f'Total Queries: {len(data)}')
+    for dct in reversed(data):  #
         st.markdown('---')
         cols = st.columns(3)
         cols[0].text(dct['time'])
