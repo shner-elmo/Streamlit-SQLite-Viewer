@@ -41,64 +41,88 @@ def rename_duplicate_cols(data_frame):
     data_frame.columns = new_cols
 
 
-# upload file and download sample
-upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
-                               accept_multiple_files=False)
-while upload_file is None:
-    with open("parch-and-posey.db", "rb") as file:
-        st.download_button(label="Download sample dataset", data=file, file_name=file.name)
-    st.stop()
-else:
-    extension = upload_file.name.split('.')[-1]
-    if extension == 'sql':
-        conn = sqlite3.connect(':memory:')
-        conn.executescript(upload_file.getvalue().decode('utf-8'))
-        st.session_state.conn = conn
+if 'query_history' not in st.session_state:
+    st.session_state.query_history = []  # type_: list[dict]
+
+tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
+with tab1:
+    # upload file and download sample
+    upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
+                                   accept_multiple_files=False)
+    while upload_file is None:
+        with open("parch-and-posey.db", "rb") as file:
+            st.download_button(label="Download sample dataset", data=file, file_name=file.name)
+        st.stop()
     else:
-        st.session_state.conn = sqlite_connect(upload_file)
-
-
-# table and metrics
-with st.container():
-    query = st.text_area('SQL Query', value='SELECT * FROM table', key='query')
-    timer_start = time.perf_counter()
-
-    if query:
-        try:
-            df = pd.read_sql_query(query, st.session_state.conn)
-        except Exception as E:
-            st.warning(E)
+        extension = upload_file.name.split('.')[-1]
+        if extension == 'sql':
+            conn = sqlite3.connect(':memory:')
+            conn.executescript(upload_file.getvalue().decode('utf-8'))
+            st.session_state.conn = conn
         else:
-            ms_elapsed = int((time.perf_counter() - timer_start) * 1000)
-            cols = st.columns(3)
-            cols[0].text(f'Exec time: {ms_elapsed}ms')
-            cols[1].text(f'Last Query: {time.strftime("%X")}')
-            cols[2].text(f'Shape: {df.shape}')
+            st.session_state.conn = sqlite_connect(upload_file)
 
-            if df.columns.has_duplicates:
-                rename_duplicate_cols(df)
-            st.dataframe(df)
+    # table and metrics
+    with st.container():
+        query = st.text_area(
+            label='SQL Query',
+            value='SELECT * FROM table',
+            height=160,
+            key='query',
+            help='All queries are executed by the SQLite3 engine. Drag the bottom right corner to expand the window'
+        )
+        timer_start = time.perf_counter()
 
+        if query:
+            try:
+                df = pd.read_sql_query(query, st.session_state.conn)
+            except Exception as E:
+                st.warning(E)
+            else:
+                # display dataframe and stats
+                ms_elapsed = int((time.perf_counter() - timer_start) * 1000)
+                cols = st.columns(3)
+                cols[0].text(f'Exec time: {ms_elapsed}ms')
+                cols[1].text(f'Last Query: {time.strftime("%X")}')
+                cols[2].text(f'Shape: {df.shape}')
+
+                if df.columns.has_duplicates:
+                    rename_duplicate_cols(df)
+                st.dataframe(df)
+
+                # save query and stats for query-history tab
+                st.session_state.query_history.append(
+                    {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
+
+with tab2:
+    st.write(f'Total Queries: {len(st.session_state.query_history)}')
+    for dct in reversed(st.session_state.query_history):  #
+        st.markdown('---')
+        cols = st.columns(3)
+        cols[0].text(dct['time'])
+        cols[1].text(f'Exec time: {dct["exec_time_ms"]}ms')
+        cols[2].text(f'Shape: {dct["shape"]}')
+        st.markdown(f'```sql \n{dct["query"]} \n```')
 
 # sidebar/ schema
 with st.sidebar:
     show_types = st.checkbox('Show types', value=True, help='Show data types for each column ?')
     schema = ''
-    cursor = st.session_state.conn  # .cursor()
+    with st.session_state.conn as cursor:
 
-    for x in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
-        table = x[0]
-        schema += f'\n\n * {table}:'
+        for x in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+            table = x[0]
+            schema += f'\n\n * {table}:'
 
-        for row in cursor.execute(f"PRAGMA table_info('{table}')"):
-            col_name = row[1]
-            col_type = row[2].upper() if show_types is True else ''
-            schema += f'\n     - {col_name:<15} {col_type}'
+            for row in cursor.execute(f"PRAGMA table_info('{table}')"):
+                col_name = row[1]
+                col_type = row[2].upper() if show_types is True else ''
+                schema += f'\n     - {col_name:<15} {col_type}'
 
     st.text('DataBase Schema:')
     st.text(schema)
 
-    st.markdown('***')
+    st.markdown('---')
     cols = st.columns(4)
     cols[0].markdown('Shneor E.')
     cols[3].markdown('[Source](https://bit.ly/3zZwpim)')
