@@ -54,8 +54,19 @@ def hist_queries() -> list[dict]:
 
 
 data = hist_queries()
-
 tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
+
+with tab2:
+    # query history
+    st.write(f'Total Queries: {len(data)}')
+    for dct in reversed(data):  #
+        st.markdown('---')
+        cols = st.columns(3)
+        cols[0].text(dct['time'])
+        cols[1].text(f'Exec time: {dct["exec_time_ms"]}ms')
+        cols[2].text(f'Shape: {dct["shape"]}')
+        st.markdown(f'```sql \n{dct["query"]} \n```')
+
 with tab1:
     # upload file and download sample
     upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
@@ -104,16 +115,6 @@ with tab1:
                 # save query and stats for query-history tab
                 data.append(
                     {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
-
-with tab2:
-    st.write(f'Total Queries: {len(data)}')
-    for dct in reversed(data):  #
-        st.markdown('---')
-        cols = st.columns(3)
-        cols[0].text(dct['time'])
-        cols[1].text(f'Exec time: {dct["exec_time_ms"]}ms')
-        cols[2].text(f'Shape: {dct["shape"]}')
-        st.markdown(f'```sql \n{dct["query"]} \n```')
 
 # sidebar/ schema
 with st.sidebar:
