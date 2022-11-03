@@ -42,24 +42,29 @@ def rename_duplicate_cols(data_frame):
 
 
 @st.experimental_singleton
-def hist_queries() -> list[dict]:
+def users_dict() -> dict:
     """
-    Function that returns a list, the decorator will save the output
-    of the function, and therefore it will just mutate the output (list)
-    which is saved in cache.
-    (all this because we cannot store a dictionary directly in cache)
+    # Function that returns a list, the decorator will save the output
+    # of the function, and therefore it will just mutate the output (list)
+    # which is saved in cache.
+    # (all this because we cannot store a dictionary directly in cache)
     """
-    d: list[dict] = []
-    return d
+    return {'users': []}
 
 
-data = hist_queries()
+user_id = st.experimental_user.get('name') or st.experimental_user.get('email')
+users = users_dict()
+if user_id not in users:
+    users[user_id] = []  # each user has a list of historical queries
+    users['users'].append({**st.experimental_user})
+
+queries = users[user_id]
 tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
 
 with tab2:
     # query history
-    st.write(f'Total Queries: {len(data)}')
-    for dct in reversed(data):  #
+    st.write(f'Total Queries: {len(queries)}')
+    for dct in reversed(queries):  #
         st.markdown('---')
         cols = st.columns(3)
         cols[0].text(dct['time'])
@@ -113,7 +118,7 @@ with tab1:
                 st.dataframe(df)
 
                 # save query and stats for query-history tab
-                data.append(
+                queries.append(
                     {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
 
 # sidebar/ schema
