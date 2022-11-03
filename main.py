@@ -7,7 +7,6 @@ from pathlib import Path
 from uuid import uuid4
 
 
-@st.experimental_memo
 def sqlite_connect(db_bytes) -> sqlite3.Connection:
     """
     Load Sqlite file
@@ -21,7 +20,6 @@ def sqlite_connect(db_bytes) -> sqlite3.Connection:
     return con
 
 
-@st.experimental_memo
 def sql_connect(file) -> sqlite3.Connection:
     """
     Load .sql to Sqlite3
@@ -95,7 +93,7 @@ with tab1:
         with open("parch-and-posey.db", "rb") as file:
             st.download_button(label="Download sample dataset", data=file, file_name=file.name)
         st.stop()
-    else:
+    if 'conn' not in st.session_state:
         extension = upload_file.name.split('.')[-1]
         st.session_state.conn = sql_connect(upload_file) if extension == 'sql' else sqlite_connect(upload_file)
 
