@@ -70,22 +70,17 @@ def debug(*args, **kwargs) -> None:
 
 
 @st.experimental_singleton
-def queries_dict() -> dict:
-    return {'users': []}
+def get_queries() -> list:
+    return []
 
 
-user_id = st.experimental_user.get('name') or st.experimental_user.get('email') or 'shared_users'
-queries = queries_dict()
-if user_id not in queries:
-    queries[user_id] = []  # each user has a list of historical queries
-    queries['users'].append({**st.experimental_user})
-
+queries: list[dict] = get_queries()
 tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
 
 with tab2:
     # query history
-    st.write(f'Total Queries: {len(queries[user_id])}')
-    for dct in reversed(queries[user_id]):  #
+    st.write(f'Total Queries: {len(queries)}')
+    for dct in reversed(queries):  #
         st.markdown('---')
         cols = st.columns(3)
         # cols[0].text(dct['time'])  # server time is not synchronized with the user's timezone
@@ -134,9 +129,8 @@ with tab1:
                 st.dataframe(df)
 
                 # save query and stats for query-history tab
-                lst: list[dict] = queries[user_id]
-                if len(lst) == 0 or (len(lst) > 0 and query != lst[-1]['query']):
-                    lst.append(
+                if len(queries) == 0 or (len(queries) > 0 and query != queries[-1]['query']):
+                    queries.append(
                         {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
 
 # sidebar/ schema
