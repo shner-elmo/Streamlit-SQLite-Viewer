@@ -7,7 +7,8 @@ from pathlib import Path
 from uuid import uuid4
 
 
-def sqlite_connect(db_bytes):
+@st.cache
+def sqlite_connect(db_bytes) -> sqlite3.Connection:
     """
     Load Sqlite file
 
@@ -16,11 +17,24 @@ def sqlite_connect(db_bytes):
     """
     fp = Path(str(uuid4()))
     fp.write_bytes(db_bytes.getvalue())
-    con = sqlite3.connect(str(fp))
+    con = sqlite3.connect(str(fp), check_same_thread=False)
     return con
 
 
-def rename_duplicate_cols(data_frame):
+@st.cache
+def sql_connect(file) -> sqlite3.Connection:
+    """
+    Load .sql to Sqlite3
+
+    :param file: file obj
+    :return: sqlite connection
+    """
+    conn = sqlite3.connect(':memory:', check_same_thread=False)
+    conn.executescript(file.getvalue().decode('utf-8'))
+    return conn
+
+
+def rename_duplicate_cols(data_frame: pd.DataFrame) -> None:
     """
     for each duplicated column it will add a suffix with a number (col, col_2, col_3... )
 
@@ -41,33 +55,34 @@ def rename_duplicate_cols(data_frame):
     data_frame.columns = new_cols
 
 
+def debug(*args, **kwargs) -> None:
+    """ Just for debugging """
+    print(f'{time.strftime("%X")}: ', *args, **kwargs)
+
+
 @st.experimental_singleton
-def users_dict() -> dict:
-    """
-    # Function that returns a list, the decorator will save the output
-    # of the function, and therefore it will just mutate the output (list)
-    # which is saved in cache.
-    # (all this because we cannot store a dictionary directly in cache)
-    """
+def queries_dict() -> dict:
     return {'users': []}
 
 
-user_id = st.experimental_user.get('name') or st.experimental_user.get('email')
-users = users_dict()
-if user_id not in users:
-    users[user_id] = []  # each user has a list of historical queries
-    users['users'].append({**st.experimental_user})
+user_id = st.experimental_user.get('name') or st.experimental_user.get('email') or 'shared_users'
+queries = queries_dict()
+if user_id not in queries:
+    queries[user_id] = []  # each user has a list of historical queries
+    queries['users'].append({**st.experimental_user})
 
-queries = users[user_id]
 tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
 
 with tab2:
     # query history
-    st.write(f'Total Queries: {len(queries)}')
-    for dct in reversed(queries):  #
+    if user_id == 'shared_users':
+        st.warning('Try logging in to get user specific history')
+
+    st.write(f'Total Queries: {len(queries[user_id])}')
+    for dct in reversed(queries[user_id]):  #
         st.markdown('---')
         cols = st.columns(3)
-        cols[0].text(dct['time'])
+        # cols[0].text(dct['time'])  # server time is not synchronized with the user's timezone
         cols[1].text(f'Exec time: {dct["exec_time_ms"]}ms')
         cols[2].text(f'Shape: {dct["shape"]}')
         st.markdown(f'```sql \n{dct["query"]} \n```')
@@ -82,12 +97,7 @@ with tab1:
         st.stop()
     else:
         extension = upload_file.name.split('.')[-1]
-        if extension == 'sql':
-            conn = sqlite3.connect(':memory:')
-            conn.executescript(upload_file.getvalue().decode('utf-8'))
-            st.session_state.conn = conn
-        else:
-            st.session_state.conn = sqlite_connect(upload_file)
+        st.session_state.conn = sql_connect(upload_file) if extension == 'sql' else sqlite_connect(upload_file)
 
     # table and metrics
     with st.container():
@@ -118,8 +128,10 @@ with tab1:
                 st.dataframe(df)
 
                 # save query and stats for query-history tab
-                queries.append(
-                    {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
+                lst: list[dict] = queries[user_id]
+                if len(lst) == 0 or (len(lst) > 0 and query != lst[-1]['query']):
+                    lst.append(
+                        {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
 
 # sidebar/ schema
 with st.sidebar:
