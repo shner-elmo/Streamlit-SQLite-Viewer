@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 
-@st.cache
+@st.experimental_memo
 def sqlite_connect(db_bytes) -> sqlite3.Connection:
     """
     Load Sqlite file
@@ -21,7 +21,7 @@ def sqlite_connect(db_bytes) -> sqlite3.Connection:
     return con
 
 
-@st.cache
+@st.experimental_memo
 def sql_connect(file) -> sqlite3.Connection:
     """
     Load .sql to Sqlite3
