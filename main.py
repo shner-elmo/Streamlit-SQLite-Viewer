@@ -51,6 +51,17 @@ def rename_duplicate_cols(data_frame: pd.DataFrame) -> None:
         else:
             new_cols.append(col)
     data_frame.columns = new_cols
+    
+    
+def match_pk_fk(val: int) -> str:
+    """ Match the value returned by the pk column in SQLite pragma_table_info() """
+    if not show_types or val == 0:
+        return ''
+    if val == 1:
+        return 'PK'
+    if val == 2:
+        return 'FK'
+    raise TypeError(f'Expected type None or int, not {type(val)}, {val =}')
 
 
 def debug(*args, **kwargs) -> None:
@@ -73,9 +84,6 @@ tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
 
 with tab2:
     # query history
-    if user_id == 'shared_users':
-        st.warning('Try logging in to get user specific history')
-
     st.write(f'Total Queries: {len(queries[user_id])}')
     for dct in reversed(queries[user_id]):  #
         st.markdown('---')
@@ -144,7 +152,7 @@ with st.sidebar:
             for row in cursor.execute(f"PRAGMA table_info('{table}')"):
                 col_name = row[1]
                 col_type = row[2].upper() if show_types is True else ''
-                schema += f'\n     - {col_name:<15} {col_type}'
+                schema += f'\n     - {col_name:<15} {col_type} \t {match_pk_fk(row[5])}'
 
     st.text('DataBase Schema:')
     st.text(schema)
