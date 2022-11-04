@@ -5,6 +5,7 @@ import sqlite3
 import time
 from pathlib import Path
 from uuid import uuid4
+from collections import deque
 
 
 def sqlite_connect(db_bytes) -> sqlite3.Connection:
@@ -70,17 +71,17 @@ def debug(*args, **kwargs) -> None:
 
 
 @st.experimental_singleton
-def get_queries() -> list:
-    return []
+def get_queries() -> deque:
+    return deque(maxlen=50)
 
 
-queries: list[dict] = get_queries()
+queries: deque[dict] = get_queries()
 tab1, tab2 = st.tabs(['Execute SQL', 'Query History'])
 
 with tab2:
     # query history
     st.write(f'Total Queries: {len(queries)}')
-    for dct in reversed(queries):  #
+    for dct in reversed(queries):
         st.markdown('---')
         cols = st.columns(3)
         # cols[0].text(dct['time'])  # server time is not synchronized with the user's timezone
@@ -135,11 +136,11 @@ with tab1:
 
                 # a "wrapper-button" is created, so only if the user clicks "Save data to..."
                 # then it will process and create the file to download
-                file_name = upload_file.name.split('.')[0] + '.csv'
+                file_name = f'streamlit_{upload_file.name.split(".")[0]}.csv'
                 download_data = st.button('Save data to CSV')
                 if download_data:
                     st.download_button(label=file_name, data=df.to_csv(index=False).encode('utf-8'),
-                                       file_name=f'streamlit-{file_name}', mime='text/csv')
+                                       file_name=file_name, mime='text/csv')
 
 # sidebar/ schema
 with st.sidebar:
