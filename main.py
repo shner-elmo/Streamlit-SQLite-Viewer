@@ -93,8 +93,8 @@ with tab1:
     upload_file = st.file_uploader('Upload dataset:', type=['.sql', '.db', '.sqlite', '.sqlite3', '.db3'],
                                    accept_multiple_files=False)
     while upload_file is None:
-        with open("parch-and-posey.db", "rb") as file:
-            st.download_button(label="Download sample dataset", data=file, file_name=file.name)
+        with open("parch-and-posey.db", "rb") as f:
+            st.download_button(label="Download sample dataset", data=f, file_name=f.name)
         st.stop()
     if 'conn' not in st.session_state:
         extension = upload_file.name.split('.')[-1]
@@ -132,6 +132,14 @@ with tab1:
                 if len(queries) == 0 or (len(queries) > 0 and query != queries[-1]['query']):
                     queries.append(
                         {'time': time.strftime("%X"), 'query': query, 'exec_time_ms': ms_elapsed, 'shape': df.shape})
+
+                # a "wrapper-button" is created, so only if the user clicks "Save data to..."
+                # then it will process and create the file to download
+                file_name = upload_file.name.split('.')[0] + '.csv'
+                download_data = st.button('Save data to CSV')
+                if download_data:
+                    st.download_button(label=file_name, data=df.to_csv(index=False).encode('utf-8'),
+                                       file_name=f'streamlit-{file_name}', mime='text/csv')
 
 # sidebar/ schema
 with st.sidebar:
