@@ -15,4 +15,4 @@ You can now use the web app directly [online](https://shner-elmo-streamlit-sqlit
 - [x] Add styling to the background and table
 - [x] Optimize file upload block
 - [x] Add query history
-- [x] Add more "Save as ..." options
+- [ ] Add more "Save as ..." options
